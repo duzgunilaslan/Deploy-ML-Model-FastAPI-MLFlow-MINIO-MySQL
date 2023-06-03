@@ -1,7 +1,28 @@
-from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+from sqlmodel import SQLModel, Field
 
 
-class Price(BaseModel):
+class PricePredictions(SQLModel,table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    Day: int
+    Month: int
+    ForecastWindProduction: float
+    SystemLoadEA: float
+    SMPEA: float
+    ORKTemperature: float
+    ORKWindspeed: float
+    CO2Intensity: float
+    ActualWindProduction: float
+    SystemLoadEP2: float
+    prediction: float
+    prediction_time: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    client_ip: str
+
+
+
+
+class Price(SQLModel):
     Day: int
     Month: int
     ForecastWindProduction: float
@@ -29,3 +50,4 @@ class Price(BaseModel):
 
             }
         }
+
