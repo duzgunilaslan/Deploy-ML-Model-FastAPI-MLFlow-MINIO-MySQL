@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends, Request
-from model import Price
+from models import Price
 import os
 from sqlalchemy.orm import Session
 from mlflow.sklearn import load_model
+from database import engine, get_db, create_db_and_tables
 
 # Tell where is the tracking server and artifact server
 os.environ['MLFLOW_TRACKING_URI'] = 'http://localhost:5001/'
@@ -16,6 +17,9 @@ model = load_model(
 )
 
 app = FastAPI()
+
+# Creates all the tables defined in models module
+create_db_and_tables()
 
 
 # Note that model will coming from mlflow
