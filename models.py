@@ -19,9 +19,6 @@ class PricePredictions(SQLModel,table=True):
     prediction_time: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     client_ip: str
 
-
-
-
 class Price(SQLModel):
     Day: int
     Month: int
