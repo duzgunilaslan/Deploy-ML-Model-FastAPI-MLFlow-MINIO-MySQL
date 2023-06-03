@@ -11,7 +11,7 @@ os.environ['MLFLOW_S3_ENDPOINT_URL'] = 'http://localhost:9000/'
 
 # Learn, decide and get model from mlflow model registry
 model_name = "RFElectricityPricePrediction"
-model_version = 6
+model_version = 1
 model = load_model(
     model_uri=f"models:/{model_name}/{model_version}"
 )
