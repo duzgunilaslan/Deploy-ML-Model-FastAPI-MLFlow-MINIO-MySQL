@@ -14,11 +14,6 @@ from mlflow.store.artifact.runs_artifact_repo import RunsArtifactRepository
 data = pd.read_csv("https://raw.githubusercontent.com/amankharwal/Website-data/master/electricity.csv")
 print(data.head())
 
-# Read dataset
-data = pd.read_csv("https://raw.githubusercontent.com/amankharwal/Website-data/master/electricity.csv")
-print(data.head())
-
-
 # Convert values to numeric
 
 data["ForecastWindProduction"] = pd.to_numeric(data["ForecastWindProduction"], errors= 'coerce')
