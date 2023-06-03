@@ -1,0 +1,89 @@
+version: "3.7"
+networks:
+  mlops-net:
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+services:
+  minio:
+    restart: always
+    image: minio/minio:RELEASE.2021-10-13T00-23-17Z
+    container_name: mlflow_s3
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      mlops-net:
+        ipv4_address: 172.18.0.9
+    env_file:
+      - .env
+    command: server /data --console-address ':9001' --address ':9000'
+    environment:
+      - MINIO_ROOT_USER=${AWS_ACCESS_KEY_ID}
+      - MINIO_ROOT_PASSWORD=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - minio_data:/data
+
+  mc:
+    image: minio/mc:RELEASE.2021-10-07T04-19-58Z
+    depends_on:
+      - minio
+    container_name: mc
+    networks:
+      mlops-net:
+        ipv4_address: 172.18.0.2
+    env_file:
+      - .env
+    entrypoint: >
+      /bin/sh -c "
+      /tmp/wait-for-it.sh minio:9000;
+      /usr/bin/mc alias set minio http://minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
+      /usr/bin/mc mb minio/${S3_MLFLOW_BUCKET};
+      exit 0;
+      "
+    volumes:
+      - ./wait-for-it.sh:/tmp/wait-for-it.sh
+  mysql:
+    restart: always
+    image: mysql:8.0.31
+    container_name: mlflow_db
+    ports:
+      - "3306:3306"
+    networks:
+      mlops-net:
+        ipv4_address: 172.18.0.3
+    env_file:
+      - .env
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST="%"
+    volumes:
+      - dbdata:/var/lib/mysql
+      # Directory with *sql files to initialize DB
+      - "${PWD}/sql_scripts:/docker-entrypoint-initdb.d"
+    command: --authentication_policy=mysql_native_password
+  mlflow:
+    restart: always
+    build: ./mlflow
+    image: mlflow_server
+    container_name: mlflow_server
+    ports:
+      - "5001:5000"
+    networks:
+      mlops-net:
+        ipv4_address: 172.18.0.4
+    env_file:
+      - .env
+    environment:
+      - S3_MLFLOW_BUCKET=${S3_MLFLOW_BUCKET}
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    command: mlflow server --backend-store-uri mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE} --artifacts-destination s3://${S3_MLFLOW_BUCKET}/ --serve-artifacts --host 0.0.0.0
+
+volumes:
+  dbdata:
+  minio_data:
