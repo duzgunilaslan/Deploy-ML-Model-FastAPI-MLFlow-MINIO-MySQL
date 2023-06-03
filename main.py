@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, Request
-from models import Price
+from models import Price,PricePredictions
 import os
 from sqlalchemy.orm import Session
 from mlflow.sklearn import load_model
@@ -54,9 +54,38 @@ def makePrediction(model, request):
     return prediction[0]
 
 
-# Advertising Prediction endpoint
-@app.post("/prediction/priceprediction")
-async def predict_advertising(request: Price):
-    prediction = makePrediction(model, request.dict())
 
-    return {"prediction": prediction}
+# Insert Prediction information
+def insertPrice(request, prediction, client_ip, db):
+    newPrice = PricePredictions(
+        Day = request["Day"],
+        Month = request["Month"],
+        ForecastWindProduction = request["ForecastWindProduction"],
+        SystemLoadEA = request["SystemLoadEA"],
+        SMPEA = request["SMPEA"],
+        ORKTemperature = request["ORKTemperature"],
+        ORKWindspeed = request["ORKWindspeed"],
+        CO2Intensity = request["CO2Intensity"],
+        ActualWindProduction = request["ActualWindProduction"],
+        SystemLoadEP2 = request['SystemLoadEP2'],
+        prediction=prediction,
+        client_ip=client_ip
+    )
+
+    with db as session:
+        session.add(newPrice)
+        session.commit()
+        session.refresh(newPrice)
+
+    return newPrice
+
+
+
+# Electirical Price Prediction endpoint
+@app.post("/prediction/priceprediction")
+async def predictPrice(request: Price, fastapi_req: Request,  db: Session = Depends(get_db)):
+    prediction = makePrediction(model, request.dict())
+    db_insert_record = insertPrice(request=request.dict(), prediction=prediction,
+                                          client_ip=fastapi_req.client.host,
+                                          db=db)
+    return {"prediction": prediction, "db_record": db_insert_record}
